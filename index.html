@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ボルト締付トルク＆軸力 簡易計算ツール | AIツール実験室 Day 3</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --success: #34d399;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 20px 16px 60px;
+    }
+    .container { max-width: 680px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 24px; }
+    .badge {
+      display: inline-block;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: bold;
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    h1 { font-size: 1.45rem; margin-bottom: 6px; }
+    .subtitle { font-size: 0.875rem; color: var(--muted); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    select, input[type="range"] { width: 100%; }
+    select {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+    }
+    input[type="range"] { accent-color: var(--accent); cursor: pointer; }
+    .val-tag { color: var(--accent); font-weight: bold; }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .res-box {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .res-box.main {
+      border-color: var(--success);
+      background: rgba(52, 211, 153, 0.08);
+    }
+    .res-label { font-size: 0.78rem; color: var(--muted); margin-bottom: 4px; }
+    .res-num { font-size: 1.55rem; font-weight: 800; color: var(--success); }
+    .sub-specs {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .formula {
+      font-family: monospace;
+      background: #0f172a;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 12px;
+      text-align: center;
+    }
+    .cta-box { text-align: center; font-size: 0.875rem; }
+    .cta-box p { color: var(--muted); margin-bottom: 12px; }
+    .btn-group { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block;
+      padding: 10px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .btn-primary { background: var(--accent); color: #0f172a; }
+    .btn-outline { border: 1px solid var(--border); color: var(--text); }
+    footer { text-align: center; font-size: 0.75rem; color: var(--muted); margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">AIエージェント開発実験 Day 3</span>
+      <h1>ボルト締付トルク＆軸力 簡易計算ツール</h1>
+      <p class="subtitle">JIS並目ねじの呼び径・強度区分・潤滑条件から適正締付トルクと発生軸力を即時算出</p>
+    </header>
+
+    <div class="card">
+      <div class="field">
+        <label>ねじの呼び径（JIS並目）</label>
+        <select id="size" onchange="calc()">
+          <option value="3">M3（ピッチ 0.5mm / 有効断面積 5.03mm²）</option>
+          <option value="4">M4（ピッチ 0.7mm / 有効断面積 8.78mm²）</option>
+          <option value="5">M5（ピッチ 0.8mm / 有効断面積 14.2mm²）</option>
+          <option value="6" selected>M6（ピッチ 1.0mm / 有効断面積 20.1mm²）</option>
+          <option value="8">M8（ピッチ 1.25mm / 有効断面積 36.6mm²）</option>
+          <option value="10">M10（ピッチ 1.5mm / 有効断面積 58.0mm²）</option>
+          <option value="12">M12（ピッチ 1.75mm / 有効断面積 84.3mm²）</option>
+          <option value="16">M16（ピッチ 2.0mm / 有効断面積 157mm²）</option>
+          <option value="20">M20（ピッチ 2.5mm / 有効断面積 245mm²）</option>
+          <option value="24">M24（ピッチ 3.0mm / 有効断面積 353mm²）</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>ボルト強度区分</label>
+        <select id="grade" onchange="calc()">
+          <option value="4.8">強度区分 4.8（一般鋼・耐力 320 N/mm²）</option>
+          <option value="8.8" selected>強度区分 8.8（高張力鋼・耐力 640 N/mm²）</option>
+          <option value="10.9">強度区分 10.9（SCM435等・耐力 900 N/mm²）</option>
+          <option value="12.9">強度区分 12.9（六角穴付ボルト等・耐力 1080 N/mm²）</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>
+          <span>トルク係数 K（摩擦・潤滑状態）</span>
+          <span class="val-tag" id="kVal">0.20（一般・無潤滑）</span>
+        </label>
+        <input type="range" id="kFactor" min="0.10" max="0.30" step="0.01" value="0.20" oninput="calc()">
+      </div>
+
+      <div class="field" style="margin-bottom:0;">
+        <label>
+          <span>耐力に対する締付率（弾性域目安 60〜70%）</span>
+          <span class="val-tag" id="ratioVal">70%</span>
+        </label>
+        <input type="range" id="yieldRatio" min="40" max="85" step="5" value="70" oninput="calc()">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="result-grid">
+        <div class="res-box main">
+          <div class="res-label">適正締付トルク T</div>
+          <div class="res-num" id="resTorque">10.8 N·m</div>
+        </div>
+        <div class="res-box main" style="border-color: var(--accent); background: rgba(56, 189, 248, 0.08);">
+          <div class="res-label">発生軸力（締付力）Ff</div>
+          <div class="res-num" id="resForce" style="color: var(--accent);">9.01 kN</div>
+        </div>
+      </div>
+
+      <div class="sub-specs">
+        <span id="specArea">有効断面積 As: 20.1 mm²</span>
+        <span id="specYield">保証耐力 σy: 640 N/mm²</span>
+        <span id="specKgf">参考値: 約 1.10 kgf·m</span>
+      </div>
+
+      <div class="formula">計算式：T = K × d × Ff ／ Ff = σy × As × 締付率</div>
+    </div>
+
+    <div class="card cta-box">
+      <p>このツールは「無料AIエージェントだけで毎日Webアプリを作って公開する実験」で生成しました。</p>
+      <div class="btn-group">
+        <a href="https://note.com/sakurai_kei" target="_blank" rel="noopener" class="btn btn-primary">開発の裏側・プロンプトをnoteで見る</a>
+        <a href="https://note.com/sakurai_kei" target="_blank" rel="noopener" class="btn btn-outline">著者：桜井 圭のプロフィール</a>
+      </div>
+    </div>
+
+    <footer>※実設計では被締付物の座面陥没や相手材（アルミ・樹脂等）のめねじ強度も必ずご検討ください。</footer>
+  </div>
+
+  <script>
+    const boltData = {
+      3: { as: 5.03 },
+      4: { as: 8.78 },
+      5: { as: 14.2 },
+      6: { as: 20.1 },
+      8: { as: 36.6 },
+      10: { as: 58.0 },
+      12: { as: 84.3 },
+      16: { as: 157 },
+      20: { as: 245 },
+      24: { as: 353 }
+    };
+
+    const yieldStrength = {
+      '4.8': 320,
+      '8.8': 640,
+      '10.9': 900,
+      '12.9': 1080
+    };
+
+    function calc() {
+      const d = Number(document.getElementById('size').value);
+      const grade = document.getElementById('grade').value;
+      const k = Number(document.getElementById('kFactor').value);
+      const ratio = Number(document.getElementById('yieldRatio').value) / 100;
+
+      let kLabel = '一般・無潤滑';
+      if (k <= 0.14) kLabel = '二硫化モリブデン等 潤滑';
+      else if (k <= 0.17) kLabel = '油潤滑・亜鉛めっき';
+      else if (k >= 0.24) kLabel = 'ステンレス・乾燥高摩擦';
+
+      document.getElementById('kVal').textContent = `${k.toFixed(2)}（${kLabel}）`;
+      document.getElementById('ratioVal').textContent = `${Math.round(ratio * 100)}%`;
+
+      const as = boltData[d].as;
+      const sy = yieldStrength[grade];
+      const forceN = sy * as * ratio; // N
+      const torqueNm = k * (d / 1000) * forceN; // N*m
+
+      document.getElementById('resTorque').textContent = torqueNm < 10
+        ? `${torqueNm.toFixed(2)} N·m`
+        : `${torqueNm.toFixed(1)} N·m`;
+      document.getElementById('resForce').textContent = `${(forceN / 1000).toFixed(2)} kN`;
+
+      document.getElementById('specArea').textContent = `有効断面積 As: ${as} mm²`;
+      document.getElementById('specYield').textContent = `耐力 σy: ${sy} N/mm²`;
+      document.getElementById('specKgf').textContent = `約 ${(torqueNm / 9.80665).toFixed(2)} kgf·m`;
+    }
+
+    calc();
+  </script>
+</body>
+</html>
